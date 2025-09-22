@@ -40,10 +40,15 @@ impl MemoryBus {
 impl CPU {
     fn step(&mut self) {
         let mut instruction_byte = self.bus.read_byte(self.pc);
-        let next_pc = if let Some(instruction) = Instruction::from_byte(instruction_byte) {
-            self.execute(instruction);
+        let prefixed = instruction_byte == 0xCb;
+        if prefixed {
+            instruction_byte = self.bus.read_byte(self.pc + 1);
+        }
+        let next_pc = if let Some(instruction) = Instruction::from_byte(instruction_byte,prefixed) {
+            self.execute(instruction)
         } else {
-            panic!("Unkown instruction found for: 0x{:x}", instruction_byte);
+            let description = format!("0x{}{:x}", if prefixed { "cb" } else { "" }, instruction_byte);
+            panic!("Unkown instruction found for: {}", description)
         };
         self.pc = next_pc;
     }
@@ -781,6 +786,15 @@ impl CPU {
         self.register.f.carry = false;
         self.register.f.half_carry = true;
         new_value
+    }
+    fn jump(&self, jump: bool) -> u16 {
+        if jump {
+            let least_significant_byte = self.bus.read_byte(self.pc + 1) as u16;
+            let most_significant_byte = self.bus.read_byte(self.pc + 2) as u16;
+            (most_significant_byte << 8) | least_significant_byte
+        } else {
+            self.pc.wrapping_add(3)
+        }
     }
     fn ccf(&mut self) {
         self.register.f.carry = !self.register.f.carry;
