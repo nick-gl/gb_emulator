@@ -512,6 +512,7 @@ pub enum JumpTest {
 }
 pub enum WordByteTarget {
     //just like the Byte type except with 16-bit values
+    BC,DE
 }
 pub enum WordByteSource {
     //just like the Byte type except with 16-bit values
