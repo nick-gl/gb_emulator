@@ -1,5 +1,5 @@
 use std::collections::hash_map::Values;
-use crate::instruction::{Instruction,ADDHLTarget,ArithmeticTarget,IncTarget,PrefixTarget};
+use crate::instruction::{Instruction, ADDHLTarget, ArithmeticTarget, IncTarget, PrefixTarget, JumpTest,LoadType,LoadByteTarget,LoadByteSource};
 const ZERO_FLAG_BYTE_POSITION: u8 = 7;
 const SUBTRACT_FLAG_BYTE_POSITION: u8 = 6;
 const HALF_CARRY_FLAG_BYTE_POSITION: u8 = 5;
@@ -54,6 +54,38 @@ impl CPU {
     }
     fn execute(&mut self, instruction: Instruction) -> u16 {
         match instruction {
+            Instruction::LD(load_type) => {
+                match load_type {
+                    LoadType::Byte(target, source) => {
+                        let source_value = match source {
+                            LoadByteSource::A => self.register.a,
+                            LoadByteSource::D8 => self.read_next_byte(),
+                            LoadByteSource::HLI => self.bus.read_byte(self.register.get_hl()),
+                            _ => { panic!("TODO: implement other sources") }
+                        };
+                        match target {
+                            LoadByteTarget::A => self.register.a = source_value,
+                            LoadByteTarget::HLI => self.bus.write_byte(self.register.get_hl(), source_value),
+                            _ => { panic!("TODO: implement other targets") }
+                        };
+                        match source {
+                            LoadByteSource::D8 => self.pc.wrapping_add(2),
+                            _ => self.pc.wrapping_add(1),
+                        }
+                    }
+                    _ => { panic!("TODO: implement other load types") }
+                }
+            }
+            Instruction::JP(test) => {
+                let jump_condition = match test {
+                    JumpTest::NotZero => !self.register.f.zero,
+                    JumpTest::NotCarry => !self.register.f.carry,
+                    JumpTest::Zero => self.register.f.zero,
+                    JumpTest::Carry => self.register.f.carry,
+                    JumpTest::Always => true
+                };
+                self.jump(jump_condition)
+            }
             Instruction::SWAP(target) => {
                 match target {
                     PrefixTarget::A => {
@@ -1079,6 +1111,7 @@ impl Register {
         self.d = ((value >> 8) & 0xFF) as u8;
         self.e = (value & 0xFF) as u8;
     }
+    //TODO
     fn get_sp(&self) -> u16 {
         12
     }

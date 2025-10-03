@@ -463,6 +463,7 @@ pub enum Instruction {
     SLA(PrefixTarget),
     SWAP(PrefixTarget),
     JP(JumpTest),
+    LD(LoadType)
 }
 pub enum ArithmeticTarget {
     A,
@@ -508,4 +509,29 @@ pub enum JumpTest {
     NotCarry,
     Carry,
     Always
+}
+pub enum WordByteTarget {
+    //just like the Byte type except with 16-bit values
+}
+pub enum WordByteSource {
+    //just like the Byte type except with 16-bit values
+}
+pub enum AFromIndirect {
+    //load the A register with the contents from a value from a memory location whose address is stored in some location
+}
+pub enum AFromByteAddress {
+    // Just like AFromIndirect except the memory address is some address in the very last byte of memory
+}
+pub enum ByteAddressFromA {
+    //Just like IndirectFromA except the memory address is some address in the very last byte of memory.
+}
+pub enum LoadByteTarget {
+    A,B,C,D,E,H,L,HLI
+}
+pub enum LoadByteSource {
+    A,B,C,D,E,H,L,D8,HLI,
+}
+pub enum LoadType {
+    Byte(LoadByteTarget,LoadByteSource),
+    Word()
 }
