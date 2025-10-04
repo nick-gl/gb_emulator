@@ -512,13 +512,15 @@ pub enum JumpTest {
 }
 pub enum WordByteTarget {
     //just like the Byte type except with 16-bit values
-    BC,DE
+    BC,DE,HL,SP
 }
 pub enum WordByteSource {
     //just like the Byte type except with 16-bit values
+    U16,SP
 }
 pub enum AFromIndirect {
     //load the A register with the contents from a value from a memory location whose address is stored in some location
+    BC,HLPlus,HLMinus,DE,
 }
 pub enum AFromByteAddress {
     // Just like AFromIndirect except the memory address is some address in the very last byte of memory

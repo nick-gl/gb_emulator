@@ -59,7 +59,7 @@ impl CPU {
                     LoadType::Byte(target, source) => {
                         let source_value = match source {
                             LoadByteSource::A => self.register.a,
-                            LoadByteSource::D8 => self.read_next_byte(),
+                            LoadByteSource::D8 => self.bus.read_byte(self.pc+1),
                             LoadByteSource::HLI => self.bus.read_byte(self.register.get_hl()),
                             _ => { panic!("TODO: implement other sources") }
                         };
@@ -400,9 +400,10 @@ impl CPU {
                         self.bit(self.register.l,bit);self.pc.wrapping_add(1)
                     }
                     PrefixTarget::HL => {
-                        let value = self.get_hl();
-                        let new = self.bus(value);
-                        self.bit(bit,new);self.pc.wrapping_add(1)
+                        let value = self.register.get_hl();
+                        let new = self.bus.read_byte(value);
+                        self.bit(bit,new);
+                        self.pc.wrapping_add(2)
                     }
                 }
             }
@@ -473,16 +474,20 @@ impl CPU {
                         self.register.l = self.dec8(self.register.l);self.pc.wrapping_add(1)
                     }
                     IncTarget::BC => {
-                        self.set_bc(self.dec16(self.get_bc()));self.pc.wrapping_add(1)
+                        let copy = self.dec16(self.register.get_bc());
+                        self.register.set_bc(copy);self.pc.wrapping_add(1)
                     }
                     IncTarget::HL => {
-                        self.set_hl(self.dec16(self.get_hl()));self.pc.wrapping_add(1)
+                        let copy = self.dec16(self.register.get_hl());
+                        self.register.set_hl(copy);self.pc.wrapping_add(1)
                     }
                     IncTarget::DE => {
-                        self.set_de(self.dec16(self.get_de()));self.pc.wrapping_add(1)
+                        let copy = self.dec16(self.register.get_de());
+                        self.register.set_de(copy);self.pc.wrapping_add(1)
                     }
                     IncTarget::SP => {
-                        self.set_sp(self.dec16(self.get_sp()));self.pc.wrapping_add(1)
+                        let copy = self.dec16(self.register.get_sp());
+                        self.register.set_sp(copy);self.pc.wrapping_add(1)
                     }
                 }
             }
@@ -510,16 +515,21 @@ impl CPU {
                         self.register.l = self.inc8(self.register.l);self.pc.wrapping_add(1)
                     }
                     IncTarget::BC => {
-                        self.set_bc(self.inc16(self.get_bc()));self.pc.wrapping_add(1)
+                        let copy = self.inc16(self.register.get_bc());
+                        self.register.set_bc(copy);self.pc.wrapping_add(1)
                     }
                     IncTarget::HL => {
-                        self.set_hl(self.inc16(self.get_hl()));self.pc.wrapping_add(1)
+                        let copy = self.inc16(self.register.get_hl());
+                        self.register.set_hl(copy);self.pc.wrapping_add(1)
                     }
                     IncTarget::DE => {
-                        self.set_de(self.inc16(self.get_de()));self.pc.wrapping_add(1)
+                        let copy = self.inc16(self.register.get_de());
+                        self.register.set_de(copy);self.pc.wrapping_add(1)
                     }
                     IncTarget::SP => {
-                        self.set_bc(self.inc16(self.get_bc()));self.pc.wrapping_add(1)
+                        // TODO this looks wrong
+                        let copy = self.inc16(self.register.get_bc());
+                        self.register.set_bc(copy);self.pc.wrapping_add(1)
                     }
                 }
             }
