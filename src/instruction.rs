@@ -516,7 +516,7 @@ pub enum WordByteTarget {
 }
 pub enum WordByteSource {
     //just like the Byte type except with 16-bit values
-    U16,SP
+    U16(u16),SP
 }
 pub enum AFromIndirect {
     //load the A register with the contents from a value from a memory location whose address is stored in some location

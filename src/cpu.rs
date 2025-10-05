@@ -1,5 +1,5 @@
 use std::collections::hash_map::Values;
-use crate::instruction::{Instruction, ADDHLTarget, ArithmeticTarget, IncTarget, PrefixTarget, JumpTest,LoadType,LoadByteTarget,LoadByteSource};
+use crate::instruction::{Instruction, ADDHLTarget, ArithmeticTarget, IncTarget,ByteAddressFromA,AFromByteAddress,IndirectFromA,AFromIndirect,WordByteSource,WordByteTarget, PrefixTarget, JumpTest,LoadType,LoadByteTarget,LoadByteSource};
 const ZERO_FLAG_BYTE_POSITION: u8 = 7;
 const SUBTRACT_FLAG_BYTE_POSITION: u8 = 6;
 const HALF_CARRY_FLAG_BYTE_POSITION: u8 = 5;
@@ -73,7 +73,31 @@ impl CPU {
                             _ => self.pc.wrapping_add(1),
                         }
                     }
-                    _ => { panic!("TODO: implement other load types") }
+                    LoadType::Word(target,source) => {
+                        let source_value = match source {
+                            WordByteSource::SP => self.sp,
+                            WordByteSource::U16(x) => x
+
+                        };
+                        match target {
+                            WordByteTarget::SP => self.sp = source_value,
+                            WordByteTarget::BC => self.register.set_bc(source_value),
+                            WordByteTarget::DE => self.register.set_de(source_value),
+                            WordByteTarget::HL => self.register.set_hl(source_value),
+                        }
+                        let add = match source {
+                            WordByteSource::SP => 1,
+                            _=> 3
+                        };
+
+                        self.pc.wrapping_add(add)
+                    }
+                    LoadType::AFromIndirect(source) => {
+                        let source_value = match source {
+                            
+                        }
+                    }
+
                 }
             }
             Instruction::JP(test) => {
