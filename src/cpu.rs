@@ -94,7 +94,7 @@ impl CPU {
                     }
                     LoadType::AFromIndirect(source) => {
                         let source_value = match source {
-                            
+                            AFromIndirect::BC => 
                         }
                     }
 
