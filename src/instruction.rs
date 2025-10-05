@@ -522,11 +522,20 @@ pub enum AFromIndirect {
     //load the A register with the contents from a value from a memory location whose address is stored in some location
     BC,HLPlus,HLMinus,DE,
 }
+pub enum IndirectFromA {
+    BC,HLPlus,HLMinus,DE,
+}
 pub enum AFromByteAddress {
+    U16,
+    FF00U8,
+    FFOOC
     // Just like AFromIndirect except the memory address is some address in the very last byte of memory
 }
 pub enum ByteAddressFromA {
     //Just like IndirectFromA except the memory address is some address in the very last byte of memory.
+    U16,
+    FF00U8,
+    FFOOC
 }
 pub enum LoadByteTarget {
     A,B,C,D,E,H,L,HLI
@@ -536,5 +545,9 @@ pub enum LoadByteSource {
 }
 pub enum LoadType {
     Byte(LoadByteTarget,LoadByteSource),
-    Word()
+    Word(WordByteTarget,WordByteSource),
+    ByteAddressFromA(ByteAddressFromA),
+    AFromByteAddress(AFromByteAddress),
+    IndirectFromA(IndirectFromA),
+    AFromIndirect(AFromIndirect),
 }
