@@ -463,7 +463,17 @@ pub enum Instruction {
     SLA(PrefixTarget),
     SWAP(PrefixTarget),
     JP(JumpTest),
-    LD(LoadType)
+    LD(LoadType),
+    POP(StackTarget),
+    PUSH(StackTarget),
+    NOP(),
+    HALT()
+}
+pub enum StackTarget {
+    AF,
+    BC,
+    DE,
+    Hl
 }
 pub enum ArithmeticTarget {
     A,

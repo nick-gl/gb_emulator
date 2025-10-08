@@ -1,5 +1,5 @@
 use std::collections::hash_map::Values;
-use crate::instruction::{Instruction, ADDHLTarget, ArithmeticTarget, IncTarget,ByteAddressFromA,AFromByteAddress,IndirectFromA,AFromIndirect,WordByteSource,WordByteTarget, PrefixTarget, JumpTest,LoadType,LoadByteTarget,LoadByteSource};
+use crate::instruction::{Instruction, ADDHLTarget, ArithmeticTarget, IncTarget, ByteAddressFromA, AFromByteAddress, IndirectFromA, AFromIndirect, WordByteSource, WordByteTarget, PrefixTarget, JumpTest, LoadType, LoadByteTarget, LoadByteSource, StackTarget};
 const ZERO_FLAG_BYTE_POSITION: u8 = 7;
 const SUBTRACT_FLAG_BYTE_POSITION: u8 = 6;
 const HALF_CARRY_FLAG_BYTE_POSITION: u8 = 5;
@@ -9,10 +9,12 @@ struct CPU {
     pc: u16,
     sp:u16,
     bus: MemoryBus,
+    is_halted: bool,
 }
 struct MemoryBus {
     memory: [u8; 0xFFFF],
 }
+#[derive(Clone, Copy)]
 struct FlagsRegister {
     zero: bool,
     subtract: bool,
@@ -53,7 +55,15 @@ impl CPU {
         self.pc = next_pc;
     }
     fn execute(&mut self, instruction: Instruction) -> u16 {
+        if self.is_halted {return self.pc}
         match instruction {
+            Instruction::NOP() => {
+                self.pc.wrapping_add(1)
+            }
+            Instruction::HALT() => {
+                self.is_halted = true;
+                self.pc.wrapping_add(1)
+            }
             Instruction::LD(load_type) => {
                 match load_type {
                     LoadType::Byte(target, source) => {
@@ -61,12 +71,22 @@ impl CPU {
                             LoadByteSource::A => self.register.a,
                             LoadByteSource::D8 => self.bus.read_byte(self.pc+1),
                             LoadByteSource::HLI => self.bus.read_byte(self.register.get_hl()),
-                            _ => { panic!("TODO: implement other sources") }
+                            LoadByteSource::B => self.register.b,
+                            LoadByteSource::C => self.register.c,
+                            LoadByteSource::L => self.register.l,
+                            LoadByteSource::H => self.register.h,
+                            LoadByteSource::E => self.register.e,
+                            LoadByteSource::D => self.register.d,
                         };
                         match target {
                             LoadByteTarget::A => self.register.a = source_value,
                             LoadByteTarget::HLI => self.bus.write_byte(self.register.get_hl(), source_value),
-                            _ => { panic!("TODO: implement other targets") }
+                            LoadByteTarget::B => self.register.b = source_value,
+                            LoadByteTarget::C => self.register.c = source_value,
+                            LoadByteTarget::L => self.register.l = source_value,
+                            LoadByteTarget::E => self.register.e = source_value,
+                            LoadByteTarget::D => self.register.d = source_value,
+                            LoadByteTarget::H => self.register.h = source_value,
                         };
                         match source {
                             LoadByteSource::D8 => self.pc.wrapping_add(2),
@@ -93,11 +113,99 @@ impl CPU {
                         self.pc.wrapping_add(add)
                     }
                     LoadType::AFromIndirect(source) => {
-                        let source_value = match source {
-                            AFromIndirect::BC => 
+                        match source {
+                            AFromIndirect::BC => {
+                                let addr = self.register.get_bc();
+                                self.register.a = self.bus.read_byte(addr);
+                            }
+                            AFromIndirect::DE => {
+                                let addr = self.register.get_de();
+                                self.register.a = self.bus.read_byte(addr);
+                            }
+                            AFromIndirect::HLMinus => {
+                                let addr = self.register.get_hl();
+                                self.register.a = self.bus.read_byte(addr);
+                                self.register.set_hl(addr.wrapping_sub(1));
+                            }
+                            AFromIndirect::HLPlus => {
+                                let addr = self.register.get_hl();
+                                self.register.a = self.bus.read_byte(addr);
+                                self.register.set_hl(addr.wrapping_add(1));
+                            }
                         }
+
+                        // increment the program counter and return it
+                        self.pc = self.pc.wrapping_add(1);
+                        self.pc
                     }
 
+                    LoadType::IndirectFromA(indirect) => {
+                        match indirect {
+                            IndirectFromA::HLPlus => {
+                                let addr = self.register.get_hl();
+                                self.bus.write_byte(addr, self.register.a);
+                                self.register.set_hl(addr.wrapping_add(1));
+                            }
+                            IndirectFromA::HLMinus => {
+                                let addr = self.register.get_hl();
+                                self.bus.write_byte(addr, self.register.a);
+                                self.register.set_hl(addr.wrapping_sub(1));
+                            }
+                            IndirectFromA::BC => {
+                                let addr = self.register.get_bc();
+                                self.bus.write_byte(addr, self.register.a);
+                            }
+                            IndirectFromA::DE => {
+                                let addr = self.register.get_de();
+                                self.bus.write_byte(addr, self.register.a);
+                            }
+                        }
+                        self.pc.wrapping_add(1)
+                    }
+                    LoadType::AFromByteAddress(target) => {
+                        match target {
+                            AFromByteAddress::U16 => {
+                                let low = self.bus.read_byte(self.pc.wrapping_add(1));
+                                let high = self.bus.read_byte(self.pc.wrapping_add(2));
+                                let addr = ((high as u16) << 8) | (low as u16);
+                                self.register.a = self.bus.read_byte(addr);
+                                self.pc.wrapping_add(3) // opcode + 16-bit address
+                            }
+                            AFromByteAddress::FF00U8 => {
+                                let offset = self.bus.read_byte(self.pc.wrapping_add(1));
+                                let addr = 0xFF00u16 + offset as u16;
+                                self.register.a = self.bus.read_byte(addr);
+                                self.pc.wrapping_add(2) // opcode + 8-bit offset
+                            }
+                            AFromByteAddress::FFOOC => {
+                                let addr = 0xFF00u16 + self.register.c as u16;
+                                self.register.a = self.bus.read_byte(addr);
+                                self.pc.wrapping_add(1) // only opcode, no extra byte
+                            }
+                        }
+                    }
+                    LoadType::ByteAddressFromA(store_type) => {
+                        match store_type {
+                            ByteAddressFromA::U16 => {
+                                let low = self.bus.read_byte(self.pc.wrapping_add(1));
+                                let high = self.bus.read_byte(self.pc.wrapping_add(2));
+                                let addr = ((high as u16) << 8) | (low as u16);
+                                self.bus.write_byte(addr, self.register.a);
+                                self.pc.wrapping_add(3)
+                            }
+                            ByteAddressFromA::FF00U8 => {
+                                let offset = self.bus.read_byte(self.pc.wrapping_add(1));
+                                let addr = 0xFF00u16 + offset as u16;
+                                self.bus.write_byte(addr, self.register.a);
+                                self.pc.wrapping_add(2)
+                            }
+                            ByteAddressFromA::FFOOC => {
+                                let addr = 0xFF00u16 + self.register.c as u16;
+                                self.bus.write_byte(addr, self.register.a);
+                                self.pc.wrapping_add(1)
+                            }
+                        }
+                    }
                 }
             }
             Instruction::JP(test) => {
@@ -510,8 +618,8 @@ impl CPU {
                         self.register.set_de(copy);self.pc.wrapping_add(1)
                     }
                     IncTarget::SP => {
-                        let copy = self.dec16(self.register.get_sp());
-                        self.register.set_sp(copy);self.pc.wrapping_add(1)
+                        let copy = self.dec16(self.sp);
+                        self.sp = copy;self.pc.wrapping_add(1)
                     }
                 }
             }
@@ -828,7 +936,27 @@ impl CPU {
                     }
                 }
             }
+            Instruction::POP(target) => {
+                let result = self.pop();
+                match target {
+                    StackTarget::BC => self.register.set_bc(result),
+                    StackTarget::DE => self.register.set_de(result),
+                    StackTarget::Hl => self.register.set_hl(result),
+                    StackTarget::AF => self.register.set_af(result),
 
+                };
+                self.pc.wrapping_add(1)
+            }
+            Instruction::PUSH(target) => {
+                let value = match target {
+                    StackTarget::BC => self.register.get_bc(),
+                    StackTarget::DE => self.register.get_de(),
+                    StackTarget::Hl => self.register.get_hl(),
+                    StackTarget::AF => self.register.get_af(),
+                };
+                self.push(value);
+                self.pc.wrapping_add(1)
+            }
             _=> {
                 self.pc.wrapping_add(1)
             }
@@ -844,7 +972,22 @@ impl CPU {
 
         self.register.set_hl(sum);
     }
+    fn pop(&mut self) -> u16 {
+        let lsb = self.bus.read_byte(self.sp) as u16;
+        self.sp = self.sp.wrapping_add(1);
 
+        let msb = self.bus.read_byte(self.sp) as u16;
+        self.sp = self.sp.wrapping_add(1);
+
+        (msb << 8) | lsb
+    }
+    fn push(&mut self, value: u16) {
+        self.sp = self.sp.wrapping_sub(1);
+        self.bus.write_byte(self.sp, ((value & 0xFF00) >> 8) as u8);
+
+        self.sp = self.sp.wrapping_sub(1);
+        self.bus.write_byte(self.sp, (value & 0xFF) as u8);
+    }
     fn and(&mut self, value: u8) -> u8 {
         let new_value = self.register.a & value;
         self.register.f.zero = new_value == 0;
@@ -1145,11 +1288,12 @@ impl Register {
         self.d = ((value >> 8) & 0xFF) as u8;
         self.e = (value & 0xFF) as u8;
     }
-    //TODO
-    fn get_sp(&self) -> u16 {
-        12
+    fn get_af(&self) -> u16 {
+        ((self.a as u16) << 8) | (u8::from(self.f) as u16)
     }
-    fn set_sp(&mut self, value: u16) {
 
+    fn set_af(&mut self, value: u16) {
+        let af: u16 = ((self.a as u16) << 8) | (u8::from(self.f) as u16);
+        self.f = FlagsRegister::from((af & 0xFF) as u8);
     }
 }
