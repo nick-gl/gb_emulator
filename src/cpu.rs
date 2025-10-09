@@ -670,6 +670,7 @@ impl CPU {
                     }
                 }
             }
+            //TODO add u8
             Instruction::OR(target) => {
                 match target {
                     ArithmeticTarget::HL => {
