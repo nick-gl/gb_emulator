@@ -96,20 +96,25 @@ impl CPU {
                     LoadType::Word(target,source) => {
                         let source_value = match source {
                             WordByteSource::SP => self.sp,
-                            WordByteSource::U16(x) => x
-
+                            WordByteSource::U16 => {let low = self.bus.read_byte(self.pc.wrapping_add(1));
+                                let high = self.bus.read_byte(self.pc.wrapping_add(2));
+                              ((high as u16) << 8) | (low as u16)}
                         };
                         match target {
+                            WordByteTarget::U16 => {let low = self.bus.read_byte(self.pc.wrapping_add(1));
+                                let high = self.bus.read_byte(self.pc.wrapping_add(2));
+                                let addr = ((high as u16) << 8) | (low as u16);
+                                self.bus.write_byte(addr, (source_value & 0xFF) as u8);
+                                self.bus.write_byte(addr.wrapping_add(1), (source_value >> 8) as u8);}
                             WordByteTarget::SP => self.sp = source_value,
                             WordByteTarget::BC => self.register.set_bc(source_value),
                             WordByteTarget::DE => self.register.set_de(source_value),
                             WordByteTarget::HL => self.register.set_hl(source_value),
                         }
                         let add = match source {
-                            WordByteSource::SP => 1,
-                            _=> 3
+                            WordByteSource::U16 | WordByteSource::SP => 3,
+                            _=> 1
                         };
-
                         self.pc.wrapping_add(add)
                     }
                     LoadType::AFromIndirect(source) => {
@@ -660,13 +665,18 @@ impl CPU {
                     }
                     IncTarget::SP => {
                         // TODO this looks wrong
-                        let copy = self.inc16(self.register.get_bc());
-                        self.register.set_bc(copy);self.pc.wrapping_add(1)
+                        self.sp.wrapping_add(1);
+                        self.pc.wrapping_add(1)
                     }
                 }
             }
             Instruction::OR(target) => {
                 match target {
+                    ArithmeticTarget::HL => {
+                        let value = self.bus.read_byte(self.register.get_hl());
+                        let new_value = self.or(value);
+                        self.register.a = new_value;self.pc.wrapping_add(1)
+                    }
                     ArithmeticTarget::A => {
                         let value = self.register.a;
                         let new_value = self.or(value);
@@ -705,8 +715,58 @@ impl CPU {
                 }
 
             }
+            Instruction::XOR(target) => {
+                match target {
+                    ArithmeticTarget::HL => {
+                        let value = self.bus.read_byte(self.register.get_hl());
+                        self.register.a = self.xor(value);
+                        self.pc.wrapping_add(1)
+                    }
+                    ArithmeticTarget::A => {
+                        let value = self.register.a;
+                        self.register.a = self.xor(value);
+                        self.pc.wrapping_add(1)
+                    }
+                    ArithmeticTarget::B => {
+                        let value = self.register.b;
+                        self.register.a = self.xor(value);
+                        self.pc.wrapping_add(1)
+                    }
+                    ArithmeticTarget::C => {
+                        let value = self.register.c;
+                        self.register.a = self.xor(value);
+                        self.pc.wrapping_add(1)
+                    }
+                    ArithmeticTarget::D => {
+                        let value = self.register.d;
+                        self.register.a = self.xor(value);
+                        self.pc.wrapping_add(1)
+                    }
+                    ArithmeticTarget::E => {
+                        let value = self.register.e;
+                        self.register.a = self.xor(value);
+                        self.pc.wrapping_add(1)
+                    }
+                    ArithmeticTarget::H => {
+                        let value = self.register.h;
+                        self.register.a = self.xor(value);
+                        self.pc.wrapping_add(1)
+                    }
+                    ArithmeticTarget::L => {
+                        let value = self.register.l;
+                        self.register.a = self.xor(value);
+                        self.pc.wrapping_add(1)
+                    }
+                }
+            }
             Instruction::AND(target) => {
                 match target {
+                    ArithmeticTarget::HL => {
+                        let value = self.bus.read_byte(self.register.get_hl());
+                        let new_value = self.or(value);
+                        self.register.a = value;
+                        self.pc.wrapping_add(1)
+                    }
                     ArithmeticTarget::A => {
                         let value = self.register.a;
                         let new_value = self.and(value);
@@ -746,6 +806,11 @@ impl CPU {
             }
             Instruction::ADC(target) => {
                 match target {
+                    ArithmeticTarget::HL => {
+                        let value = self.bus.read_byte(self.register.get_hl());
+                        let new_value = self.adc(value);
+                        self.register.a = new_value;self.pc.wrapping_add(1)
+                    }
                     ArithmeticTarget::A => {
                         let value = self.register.a;
                         let new_value = self.adc(value);
@@ -785,6 +850,11 @@ impl CPU {
             }
             Instruction::SBC(target) => {
                 match target {
+                    ArithmeticTarget::HL => {
+                        let value = self.bus.read_byte(self.register.get_hl());
+                        let new_value = self.sbc(value);
+                        self.register.a = new_value;self.pc.wrapping_add(1)
+                    }
                     ArithmeticTarget::A => {
                         let value = self.register.a;
                         let new_value = self.sbc(value);
@@ -824,9 +894,14 @@ impl CPU {
             }
             Instruction::SUB(target) => {
                 match target {
+                    ArithmeticTarget::HL => {
+                        let value = self.bus.read_byte(self.register.get_bc());
+                        let new_value = self.sbc(value);
+                        self.register.a = new_value;self.pc.wrapping_add(1)
+                    }
                     ArithmeticTarget::A => {
                         let value = self.register.a;
-                        let new_value = self.sub(value);
+                        let new_value = self.sbc(value);
                         self.register.a = new_value;self.pc.wrapping_add(1)
                     }
                     ArithmeticTarget::B => {
@@ -863,6 +938,10 @@ impl CPU {
             }
             Instruction::ADD(target) => {
                 match target {
+                    ArithmeticTarget::HL => {
+                        self.register.a = self.add(self.bus.read_byte(self.register.get_hl()));
+                        self.pc.wrapping_add(1)
+                    }
                     ArithmeticTarget::A=> {
                         let value = self.register.a;
                         let new_value = self.add(value);
@@ -904,6 +983,11 @@ impl CPU {
             }
             Instruction::CP(target) => {
                 match target {
+                    ArithmeticTarget::HL => {
+                        let value = self.bus.read_byte(self.register.get_hl());
+                        self.sub(value);
+                        self.pc.wrapping_add(1)
+                    }
                     ArithmeticTarget::A => {
                         let value = self.register.a;
                         let new_value = self.sub(value);
