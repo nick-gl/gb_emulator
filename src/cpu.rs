@@ -670,9 +670,14 @@ impl CPU {
                     }
                 }
             }
-            //TODO add u8
+
             Instruction::OR(target) => {
                 match target {
+                    ArithmeticTarget::PC => {
+                        let value = self.bus.read_byte(self.pc+1);
+                        let new_value = self.or(value);
+                        self.register.a = new_value;self.pc.wrapping_add(1)
+                    }
                     ArithmeticTarget::HL => {
                         let value = self.bus.read_byte(self.register.get_hl());
                         let new_value = self.or(value);
@@ -718,6 +723,11 @@ impl CPU {
             }
             Instruction::XOR(target) => {
                 match target {
+                    ArithmeticTarget::PC => {
+                        let value = self.bus.read_byte(self.pc+1);
+                        let new_value = self.xor(value);
+                        self.register.a = new_value;self.pc.wrapping_add(1)
+                    }
                     ArithmeticTarget::HL => {
                         let value = self.bus.read_byte(self.register.get_hl());
                         self.register.a = self.xor(value);
@@ -762,6 +772,11 @@ impl CPU {
             }
             Instruction::AND(target) => {
                 match target {
+                    ArithmeticTarget::PC => {
+                        let value = self.bus.read_byte(self.pc+1);
+                        let new_value = self.and(value);
+                        self.register.a = new_value;self.pc.wrapping_add(1)
+                    }
                     ArithmeticTarget::HL => {
                         let value = self.bus.read_byte(self.register.get_hl());
                         let new_value = self.or(value);
@@ -807,6 +822,11 @@ impl CPU {
             }
             Instruction::ADC(target) => {
                 match target {
+                    ArithmeticTarget::PC => {
+                        let value = self.bus.read_byte(self.pc+1);
+                        let new_value = self.adc(value);
+                        self.register.a = new_value;self.pc.wrapping_add(1)
+                    }
                     ArithmeticTarget::HL => {
                         let value = self.bus.read_byte(self.register.get_hl());
                         let new_value = self.adc(value);
@@ -851,6 +871,11 @@ impl CPU {
             }
             Instruction::SBC(target) => {
                 match target {
+                    ArithmeticTarget::PC => {
+                        let value = self.bus.read_byte(self.pc+1);
+                        let new_value = self.sbc(value);
+                        self.register.a = new_value;self.pc.wrapping_add(1)
+                    }
                     ArithmeticTarget::HL => {
                         let value = self.bus.read_byte(self.register.get_hl());
                         let new_value = self.sbc(value);
@@ -895,6 +920,11 @@ impl CPU {
             }
             Instruction::SUB(target) => {
                 match target {
+                    ArithmeticTarget::PC => {
+                        let value = self.bus.read_byte(self.pc+1);
+                        let new_value = self.sub(value);
+                        self.register.a = new_value;self.pc.wrapping_add(1)
+                    }
                     ArithmeticTarget::HL => {
                         let value = self.bus.read_byte(self.register.get_bc());
                         let new_value = self.sbc(value);
@@ -939,6 +969,11 @@ impl CPU {
             }
             Instruction::ADD(target) => {
                 match target {
+                    ArithmeticTarget::PC => {
+                        let value = self.bus.read_byte(self.pc+1);
+                        let new_value = self.add(value);
+                        self.register.a = new_value;self.pc.wrapping_add(1)
+                    }
                     ArithmeticTarget::HL => {
                         self.register.a = self.add(self.bus.read_byte(self.register.get_hl()));
                         self.pc.wrapping_add(1)
@@ -984,6 +1019,11 @@ impl CPU {
             }
             Instruction::CP(target) => {
                 match target {
+                    ArithmeticTarget::PC => {
+                        let value = self.bus.read_byte(self.pc+1);
+                        let new_value = self.sub(value);
+                        self.pc.wrapping_add(1)
+                    }
                     ArithmeticTarget::HL => {
                         let value = self.bus.read_byte(self.register.get_hl());
                         self.sub(value);
