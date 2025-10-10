@@ -1082,6 +1082,50 @@ impl CPU {
                 self.push(value);
                 self.pc.wrapping_add(1)
             }
+            Instruction::ADDSP() => {
+                let value = self.bus.read_byte(self.pc) as i8 as i16;
+                self.pc = self.pc.wrapping_add(1);
+
+                let sp = self.sp;
+                let result = sp.wrapping_add(value as u16);
+
+                // Update flags according to Game Boy behavior
+                self.register.f.zero = false;
+                self.register.f.subtract = false;
+
+                // Half-carry occurs if lower nibble overflowed from bit 3 to 4
+                self.register.f.half_carry = ((sp & 0xF) + (value as u16 & 0xF)) > 0xF;
+
+                // Carry occurs if low byte overflowed from bit 7 to 8
+                self.register.f.carry = ((sp & 0xFF) + (value as u16 & 0xFF)) > 0xFF;
+
+                // Update SP (writes both lower and upper bytes)
+                self.sp = result;
+                self.pc.wrapping_add(2)
+            }
+            Instruction::LDHL() => {
+                let value = self.bus.read_byte(self.pc) as i8 as i16;
+                self.pc = self.pc.wrapping_add(1);
+
+                let sp = self.sp;
+                let result = sp.wrapping_add(value as u16);
+
+                // Update flags according to Game Boy behavior
+                self.register.f.zero = false;
+                self.register.f.subtract = false;
+
+                // Half-carry occurs if lower nibble overflowed from bit 3 to 4
+                self.register.f.half_carry = ((sp & 0xF) + (value as u16 & 0xF)) > 0xF;
+
+                // Carry occurs if low byte overflowed from bit 7 to 8
+                self.register.f.carry = ((sp & 0xFF) + (value as u16 & 0xFF)) > 0xFF;
+                self.register.set_hl(result);
+                self.pc.wrapping_add(2)
+            }
+     Instruction::LDSP() => {
+         self.sp = self.register.get_hl();
+         self.pc.wrapping_add(1)
+     }
             _=> {
                 self.pc.wrapping_add(1)
             }

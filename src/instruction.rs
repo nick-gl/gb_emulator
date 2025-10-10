@@ -235,30 +235,30 @@ impl Instruction {
             0xE5 => Some(Instruction::PUSH(StackTarget::Hl)),
             0xE6 => Some(Instruction::AND(ArithmeticTarget::PC)),
             0xE7 => None, // TODO RST
-            0xE8 => None, // TODO
-            0xE9 => None, // TODO
-            0xEA => None, // TODO
-            0xEB => None, // TODO (unused)
-            0xEC => None, // TODO (unused)
-            0xED => None, // TODO (unused)
-            0xEE => None, // TODO
-            0xEF => None, // TODO
-            0xF0 => None, // TODO
-            0xF1 => None, // TODO
-            0xF2 => None, // TODO
-            0xF3 => None, // TODO
-            0xF4 => None, // TODO (unused)
-            0xF5 => None, // TODO
-            0xF6 => None, // TODO
-            0xF7 => None, // TODO
-            0xF8 => None, // TODO
-            0xF9 => None, // TODO
-            0xFA => None, // TODO
-            0xFB => None, // TODO
-            0xFC => None, // TODO (unused)
-            0xFD => None, // TODO (unused)
-            0xFE => None, // TODO
-            0xFF => None, // TODO
+            0xE8 => Some(Instruction::ADDSP()),
+            0xE9 => None, // TODO JP HL
+            0xEA => Some(Instruction::LD(LoadType::ByteAddressFromA(ByteAddressFromA::U16))),
+            0xEB => None,
+            0xEC => None,
+            0xED => None,
+            0xEE => Some(Instruction::XOR(ArithmeticTarget::PC)),
+            0xEF => None, // TODO RST
+            0xF0 => Some(Instruction::LD(LoadType::AFromByteAddress(AFromByteAddress::FF00U8))),
+            0xF1 => Some(Instruction::POP(StackTarget::AF)),
+            0xF2 => Some(Instruction::LD(LoadType::AFromByteAddress(AFromByteAddress::FFOOC))),
+            0xF3 => None, // TODO DI
+            0xF4 => None,
+            0xF5 => Some(Instruction::PUSH(StackTarget::AF)),
+            0xF6 => Some(Instruction::OR(ArithmeticTarget::PC)),
+            0xF7 => None, //TODO RST
+            0xF8 => Some(Instruction::LDHL()),
+            0xF9 => Some(Instruction::LDSP()),
+            0xFA => Some(Instruction::LD(LoadType::AFromByteAddress(AFromByteAddress::U16))),
+            0xFB => None, // TODO EI
+            0xFC => None,
+            0xFD => None,
+            0xFE => Some(Instruction::CP(ArithmeticTarget::PC)),
+            0xFF => None, // TODO RST
             _ => /* TODO: Add mapping for rest of instructions */ None
         }
     }
@@ -386,6 +386,7 @@ impl Instruction {
 }
 
 pub enum Instruction {
+    LDSP(),
     ADD(ArithmeticTarget),
     SUB(ArithmeticTarget),
     ADC(ArithmeticTarget),
