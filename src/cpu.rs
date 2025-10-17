@@ -655,7 +655,7 @@ impl CPU {
                     }
                     IncTarget::SP => {
                         // TODO this looks wrong
-                        self.sp.wrapping_add(1);
+                        self.sp = self.sp.wrapping_add(1);
                         self.pc.wrapping_add(1)
                     }
                 }
