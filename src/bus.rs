@@ -23,7 +23,7 @@ pub const IO_SIZE: usize = IO_END - IO_BEGIN + 1;
 
 pub const HRAM_BEGIN: usize = 0xFF80;
 pub const HRAM_END: usize = 0xFFFE;
-pub const HRAM_SIZE: usize = HRAM_END - HRAM_BEGIN + 1;
+pub const HRAM_SIZE: usize = HRAM_END - HRAM_BEGIN + 1; //test
 
 pub struct MemoryBus {
     vram: [u8; VRAM_SIZE],

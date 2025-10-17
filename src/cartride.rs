@@ -7,7 +7,7 @@ pub struct Cartridge {
     pub ram_bank: u8,
     pub ram_enabled: bool,
     pub title: String,
-}
+}//test
 
 #[derive(Debug, Clone, Copy)]
 pub enum MbcType {
