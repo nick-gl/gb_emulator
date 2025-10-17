@@ -1,9 +1,9 @@
 mod cpu;
-mod gpu;
-mod keypad;
-mod audio;
+mod bus;
 mod instruction;
+mod cartride;
+mod timer;
 
 fn main() {
-    println!("Hello, world!");
+
 }

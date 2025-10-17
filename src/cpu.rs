@@ -1,21 +1,19 @@
 use std::collections::hash_map::Values;
 use crate::instruction::{Instruction, ADDHLTarget, ArithmeticTarget, IncTarget, ByteAddressFromA, AFromByteAddress, IndirectFromA, AFromIndirect, WordByteSource, WordByteTarget, PrefixTarget, JumpTest, LoadType, LoadByteTarget, LoadByteSource, StackTarget};
+use crate::bus::MemoryBus;
 const ZERO_FLAG_BYTE_POSITION: u8 = 7;
 const SUBTRACT_FLAG_BYTE_POSITION: u8 = 6;
 const HALF_CARRY_FLAG_BYTE_POSITION: u8 = 5;
 const CARRY_FLAG_BYTE_POSITION: u8 = 4;
-struct CPU {
+pub struct CPU {
     register: Register,
     pc: u16,
     sp:u16,
     bus: MemoryBus,
     is_halted: bool,
 }
-struct MemoryBus {
-    memory: [u8; 0xFFFF],
-}
 #[derive(Clone, Copy)]
-struct FlagsRegister {
+pub struct FlagsRegister {
     zero: bool,
     subtract: bool,
     half_carry: bool,
@@ -31,16 +29,8 @@ struct Register {
     h: u8,
     l: u8,
 }
-impl MemoryBus {
-    fn read_byte(&self, address: u16) -> u8 {
-        self.memory[address as usize]
-    }
-    fn write_byte(&mut self, address: u16, value: u8) {
-        self.memory[address as usize] = value;
-    }
-}
 impl CPU {
-    fn step(&mut self) {
+   pub fn step(&mut self) {
         let mut instruction_byte = self.bus.read_byte(self.pc);
         let prefixed = instruction_byte == 0xCb;
         if prefixed {
@@ -967,56 +957,53 @@ impl CPU {
                     }
                 }
             }
-            Instruction::ADD(target) => {
-                match target {
-                    ArithmeticTarget::PC => {
-                        let value = self.bus.read_byte(self.pc+1);
-                        let new_value = self.add(value);
-                        self.register.a = new_value;self.pc.wrapping_add(1)
-                    }
-                    ArithmeticTarget::HL => {
-                        self.register.a = self.add(self.bus.read_byte(self.register.get_hl()));
-                        self.pc.wrapping_add(1)
-                    }
-                    ArithmeticTarget::A=> {
-                        let value = self.register.a;
-                        let new_value = self.add(value);
-                        self.register.a = new_value;self.pc.wrapping_add(1)
-                    }
-                    ArithmeticTarget::B => {
-                        let value = self.register.b;
-                        let new_value = self.add(value);
-                        self.register.a = new_value;self.pc.wrapping_add(1)
-                    }
-                    ArithmeticTarget::C => {
-                        let value = self.register.c;
-                        let new_value = self.add(value);
-                        self.register.a = new_value;self.pc.wrapping_add(1)
-                    }
-                    ArithmeticTarget::D => {
-                        let value = self.register.d;
-                        let new_value = self.add(value);
-                        self.register.a = new_value;self.pc.wrapping_add(1)
-                    }
-                    ArithmeticTarget::E => {
-                        let value = self.register.e;
-                        let new_value = self.add(value);
-                        self.register.a = new_value;self.pc.wrapping_add(1)
-                    }
-                    ArithmeticTarget::H => {
-                        let value = self.register.h;
-                        let new_value = self.add(value);
-                        self.register.a = new_value;self.pc.wrapping_add(1)
-                    }
-                    ArithmeticTarget::L => {
-                        let value = self.register.l;
-                        let new_value = self.add(value);
-                        self.register.a = new_value;self.pc.wrapping_add(1)
-                    }
-
+            Instruction::ADD(target) => match target {
+                ArithmeticTarget::PC => {
+                    let value = self.bus.read_byte(self.pc+1);
+                    let new_value = self.add(value);
+                    self.register.a = new_value;self.pc.wrapping_add(1)
+                }
+                ArithmeticTarget::HL => {
+                    self.register.a = self.add(self.bus.read_byte(self.register.get_hl()));
+                    self.pc.wrapping_add(1)
+                }
+                ArithmeticTarget::A=> {
+                    let value = self.register.a;
+                    let new_value = self.add(value);
+                    self.register.a = new_value;self.pc.wrapping_add(1)
+                }
+                ArithmeticTarget::B => {
+                    let value = self.register.b;
+                    let new_value = self.add(value);
+                    self.register.a = new_value;self.pc.wrapping_add(1)
+                }
+                ArithmeticTarget::C => {
+                    let value = self.register.c;
+                    let new_value = self.add(value);
+                    self.register.a = new_value;self.pc.wrapping_add(1)
+                }
+                ArithmeticTarget::D => {
+                    let value = self.register.d;
+                    let new_value = self.add(value);
+                    self.register.a = new_value;self.pc.wrapping_add(1)
+                }
+                ArithmeticTarget::E => {
+                    let value = self.register.e;
+                    let new_value = self.add(value);
+                    self.register.a = new_value;self.pc.wrapping_add(1)
+                }
+                ArithmeticTarget::H => {
+                    let value = self.register.h;
+                    let new_value = self.add(value);
+                    self.register.a = new_value;self.pc.wrapping_add(1)
+                }
+                ArithmeticTarget::L => {
+                    let value = self.register.l;
+                    let new_value = self.add(value);
+                    self.register.a = new_value;self.pc.wrapping_add(1)
                 }
 
-            }
+            },
             Instruction::CP(target) => {
                 match target {
                     ArithmeticTarget::PC => {
@@ -1409,7 +1396,7 @@ impl CPU {
     }
 
 }
-impl std::convert::From<FlagsRegister> for u8 {
+impl From<FlagsRegister> for u8 {
     fn from(flag: FlagsRegister) -> u8 {
         (if flag.zero {1} else {0}) << ZERO_FLAG_BYTE_POSITION |
         (if flag.subtract {1} else {0}) << SUBTRACT_FLAG_BYTE_POSITION |
@@ -1417,7 +1404,7 @@ impl std::convert::From<FlagsRegister> for u8 {
         (if flag.carry {1} else {0}) << CARRY_FLAG_BYTE_POSITION
     }
 }
-impl std::convert::From<u8> for FlagsRegister {
+impl From<u8> for FlagsRegister {
     fn from(byte: u8) -> Self {
         let zero = ((byte >> ZERO_FLAG_BYTE_POSITION) & 0b1) != 0;
         let subtract = ((byte >> SUBTRACT_FLAG_BYTE_POSITION) & 0b1) != 0;
