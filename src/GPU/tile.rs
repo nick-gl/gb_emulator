@@ -1,4 +1,4 @@
-use::gpu::{Palette,Position};
+use crate::GPU::gpu::{Palette, Position};
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
@@ -17,9 +17,26 @@ impl Tile {
              palette
          }
      }
-    pub fn draw(&self) -> Vec<Color::RGB,Point> {
-        if self.palette == Palette::BGP {
+      pub fn get_tile_data(&self) -> Vec<(Color, Point)> {
+            let mut pixels = Vec::with_capacity(64);
 
+
+            for y in 0..8 {
+                for x in 0..8 {
+
+                    let bit_index = (y * 8 + x) * 2;
+
+                    let color_num = ((self.color >> bit_index) & 0b11) as u8;
+
+                    let color = self.palette.map_color(color_num).unwrap();
+
+                    let point = Point::new(self.position.x+ x, self.position.y + y);
+
+                    pixels.push((color, point));
+                }
+            }
+
+            pixels
         }
     }
-}//test
+//test
