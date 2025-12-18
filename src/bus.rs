@@ -1,3 +1,4 @@
+use crate::GPU::gpu::GPU; // Adjust path as needed
 use crate::cartride::Cartridge;
 use crate::timer::Timer;
 
@@ -26,67 +27,124 @@ pub const HRAM_END: usize = 0xFFFE;
 pub const HRAM_SIZE: usize = HRAM_END - HRAM_BEGIN + 1; //test
 
 pub struct MemoryBus {
-    vram: [u8; VRAM_SIZE],
-    timer: Timer,
-    hram: [u8; HRAM_SIZE],
-    io: [u8; IO_SIZE],
-    interruptenable: u8,
-    rom_bank: [u8; 0x4000],     // 0x0000–0x3FFF
-    rom_bank_n: [u8; 0x4000],   // 0x4000–0x7FFF
-    oam: [u8; OAM_SIZE],
-    switch_bank: [u8; SWITCH_SIZE],
-    wram_bank: [u8; WRAM_SIZE],
-    cartridge: Cartridge,
+    pub gpu: GPU,         // Bus now owns the GPU
+    pub timer: Timer,
+    pub cartridge: Cartridge,
+    pub wram_bank: [u8; WRAM_SIZE],
+    pub hram: [u8; HRAM_SIZE],
+    pub io: [u8; IO_SIZE],
+    pub interrupt_enable: u8,
 }
 
 impl MemoryBus {
-    /* pub fn new() -> Self {
+    pub fn new(cartridge: Cartridge) -> Self {
         Self {
-            vram: [0; VRAM_SIZE],
-            // timer: Timer,
+            gpu: GPU::new(),              // Initializes VRAM, OAM, and Tiles
+            timer: Timer::new(),          // Your Timer implementation
+            cartridge: cartridge,         // The loaded game ROM
+            wram_bank: [0; WRAM_SIZE],
             hram: [0; HRAM_SIZE],
             io: [0; IO_SIZE],
-            interruptenable: 0,
-            rom_bank: [0; 0x4000],
-            rom_bank_n: [0; 0x4000],
-            oam: [0; OAM_SIZE],
-            switch_bank: [0; SWITCH_SIZE],
-            wram_bank: [0; WRAM_SIZE],
-        }
-    } */
-    pub fn update(&mut self, cycle: u8) {
-        if self.timer.update(cycle) {
-            
+            interrupt_enable: 0,
         }
     }
-
     pub fn read_byte(&self, address: u16) -> u8 {
-        match address as usize {
-            0x0000..=0x3FFF => self.rom_bank[address as usize],
-            0x4000..=0x7FFF => self.rom_bank_n[address as usize - 0x4000],
-            VRAM_BEGIN..=VRAM_END => self.vram[address as usize - VRAM_BEGIN],
-            SWITCH_BEGIN..=SWITCH_END => self.switch_bank[address as usize - SWITCH_BEGIN],
-            WRAM_BEGIN..=WRAM_END => self.wram_bank[address as usize - WRAM_BEGIN],
-            OAM_BEGIN..=OAM_END => self.oam[address as usize - OAM_BEGIN],
-            IO_BEGIN..=IO_END => self.io[address as usize - IO_BEGIN],
-            HRAM_BEGIN..=HRAM_END => self.hram[address as usize - HRAM_BEGIN],
-            0xFFFF => self.interruptenable,
-            _ => panic!("Cannot read from address {:#X}", address),
+        let addr = address as usize; // Convert once here
+
+        match addr {
+            0xFF04 => (self.timer.divider >> 8) as u8,
+            0xFF05 => self.timer.tima,
+            0xFF06 => self.timer.tma,
+            0xFF07 => self.timer.tac,
+            // Cartridge ROM Banks
+            0x0000..=0x7FFF => self.cartridge.read_rom(address),
+
+            // GPU VRAM
+            VRAM_BEGIN..=VRAM_END => self.gpu.vram[addr - VRAM_BEGIN],
+
+            // External RAM (Cartridge)
+            SWITCH_BEGIN..=SWITCH_END => self.cartridge.read_ram(address),
+
+            // Work RAM (WRAM)
+            WRAM_BEGIN..=WRAM_END => self.wram_bank[addr - WRAM_BEGIN],
+
+            // Echo RAM (Mirror of WRAM - common in GB games)
+            0xE000..=0xFDFF => self.wram_bank[addr - 0xE000],
+
+            // GPU OAM (Object Attribute Memory)
+            OAM_BEGIN..=OAM_END => self.gpu.oam[addr - OAM_BEGIN],
+
+            // GPU I/O Registers (Direct mapping)
+            0xFF40 => self.gpu.lcd.control.raw,
+            0xFF42 => self.gpu.lcd.scroll_y,
+            0xFF43 => self.gpu.lcd.scroll_x,
+            0xFF44 => self.gpu.lcd.ly,
+            0xFF45 => self.gpu.lcd.lyc,
+            0xFF47 => self.gpu.lcd.bg_palette,
+            0xFF48 => self.gpu.lcd.obj_palette_0,
+            0xFF49 => self.gpu.lcd.obj_palette_1,
+            0xFF4A => self.gpu.lcd.window_y,
+            0xFF4B => self.gpu.lcd.window_x,
+
+            // Other I/O and Timer
+            IO_BEGIN..=IO_END => self.io[addr - IO_BEGIN],
+
+            // High RAM (HRAM)
+            HRAM_BEGIN..=HRAM_END => self.hram[addr - HRAM_BEGIN],
+
+            // Interrupt Enable Register
+            0xFFFF => self.interrupt_enable,
+
+
+            _ => 0xFF,
         }
     }
 
     pub fn write_byte(&mut self, address: u16, value: u8) {
-        match address as usize {
-            0x0000..=0x3FFF => self.rom_bank[address as usize] = value, // typically ROM is read-only; here it’s placeholder
-            0x4000..=0x7FFF => self.rom_bank_n[address as usize - 0x4000] = value,
-            VRAM_BEGIN..=VRAM_END => self.vram[address as usize - VRAM_BEGIN] = value,
-            SWITCH_BEGIN..=SWITCH_END => self.switch_bank[address as usize - SWITCH_BEGIN] = value,
-            WRAM_BEGIN..=WRAM_END => self.wram_bank[address as usize - WRAM_BEGIN] = value,
-            OAM_BEGIN..=OAM_END => self.oam[address as usize - OAM_BEGIN] = value,
-            IO_BEGIN..=IO_END => self.io[address as usize - IO_BEGIN] = value,
-            HRAM_BEGIN..=HRAM_END => self.hram[address as usize - HRAM_BEGIN] = value,
-            0xFFFF => self.interruptenable = value,
-            _ => panic!("Cannot write to address {:#X}", address),
+        let addr = address as usize;
+
+        match addr {
+            0xFF04 => self.timer.divider = 0, // Writing to DIV resets it to 0
+            0xFF05 => self.timer.tima = value,
+            0xFF06 => self.timer.tma = value,
+            0xFF07 => self.timer.tac = value,
+            0x0000..=0x7FFF => self.cartridge.write_rom(address, value),
+
+            VRAM_BEGIN..=VRAM_END => self.gpu.write_vram(addr - VRAM_BEGIN, value),
+
+            SWITCH_BEGIN..=SWITCH_END => self.cartridge.write_ram(address, value),
+
+            WRAM_BEGIN..=WRAM_END => self.wram_bank[addr - WRAM_BEGIN] = value,
+
+            0xE000..=0xFDFF => self.wram_bank[addr - 0xE000] = value,
+
+            OAM_BEGIN..=OAM_END => self.gpu.write_oam(addr - OAM_BEGIN, value),
+
+            // DMA Transfer (Very important for sprites!)
+            0xFF46 => self.perform_dma(value),
+
+            // GPU I/O Registers
+            0xFF40 => self.gpu.lcd.control.raw = value,
+            0xFF42 => self.gpu.lcd.scroll_y = value,
+            0xFF43 => self.gpu.lcd.scroll_x = value,
+            0xFF45 => self.gpu.lcd.lyc = value,
+            0xFF47 => self.gpu.lcd.bg_palette = value,
+            0xFF48 => self.gpu.lcd.obj_palette_0 = value,
+            0xFF49 => self.gpu.lcd.obj_palette_1 = value,
+            0xFF4A => self.gpu.lcd.window_y = value,
+            0xFF4B => self.gpu.lcd.window_x = value,
+
+            IO_BEGIN..=IO_END => self.io[addr - IO_BEGIN] = value,
+            HRAM_BEGIN..=HRAM_END => self.hram[addr - HRAM_BEGIN] = value,
+            0xFFFF => self.interrupt_enable = value,
+            _ => {}
+        }
+    }
+    fn perform_dma(&mut self, value: u8) {
+        let base_address = (value as u16) << 8;
+        for i in 0..0xA0 { // OAM is 160 bytes
+            let data = self.read_byte(base_address + i);
+            self.gpu.write_oam(i as usize, data);
         }
     }
 }

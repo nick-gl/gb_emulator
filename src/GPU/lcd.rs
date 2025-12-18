@@ -1,43 +1,39 @@
-use sdl2::render::Canvas;
-use sdl2::video::Window;
-use sdl2::pixels::Color;
-use sdl2::rect::Point;
 
-use crate::GPU::gpu::{Palette};
-use crate::GPU::tile::Tile;
+use crate::GPU::lcdc::LCDC;
 
 pub struct LCD {
-    pub canvas: Canvas<Window>,
-    pub bg_palette: Palette,
-    pub obj_palette: Palette,
-    pub enabled: bool,
+    pub control: LCDC,    // master control register ($FF40)
+    pub status: u8,     // LCD status ($FF41)
+    pub scroll_y: u8,   // SCY ($FF42)
+    pub scroll_x: u8,   // SCX ($FF43)
+    pub ly: u8,         // Current scanline ($FF44)
+    pub lyc: u8,        // LY Compare ($FF45)
+    pub window_y: u8,   // WY ($FF48)
+    pub window_x: u8,   // WX ($FF49)
+    pub bg_palette: u8,    // BGP ($FF47)
+    pub obj_palette_0: u8, // OBP0 ($FF48)
+    pub obj_palette_1: u8, // OBP1 ($FF49)
 }
 
 impl LCD {
-    pub fn new(canvas: Canvas<Window>) -> Self {
+    pub fn new() -> Self {
         LCD {
-            canvas,
-            bg_palette: Palette::BGP,
-            obj_palette: Palette::OBJ,
-            enabled: true,
+            control: LCDC::new(),
+            status: 0,
+            scroll_y: 0,
+            scroll_x: 0,
+            ly: 0,
+            lyc: 0,
+            window_y: 0,
+            window_x: 0,
+            bg_palette: 0,
+            obj_palette_0: 0,
+            obj_palette_1: 0,
         }
     }
 
-    pub fn clear(&mut self) {
-        self.canvas.set_draw_color(Color::RGB(155, 188, 15)); // Game Boy background color
-        self.canvas.clear();
-    }
-
-    pub fn draw_tile(&mut self, tile: &Tile) {
-        // Retrieve tile pixel data
-        for (color, point) in tile.get_tile_data() {
-            self.canvas.set_draw_color(color);
-            // draw_point expects an sdl2::rect::Point
-            let _ = self.canvas.draw_point(point);
-        }
-    }
-
-    pub fn present(&mut self) {
-        self.canvas.present();
+    /// Update the control register and all its flags at once
+    pub fn set_lcd_control(&mut self, value: u8) {
+        self.control.raw = value;
     }
 }
