@@ -17,6 +17,9 @@ impl Tile {
              palette
          }
      }
+    pub fn set_color(&mut self, color: u128) {
+        self.color = color;
+    }
       pub fn get_tile_data(&self) -> Vec<(Color, Point)> {
             let mut pixels = Vec::with_capacity(64);
 

@@ -10,6 +10,7 @@ pub struct LCD {
     pub canvas: Canvas<Window>,
     pub bg_palette: Palette,
     pub obj_palette: Palette,
+    pub enabled: bool,
 }
 
 impl LCD {
@@ -18,6 +19,7 @@ impl LCD {
             canvas,
             bg_palette: Palette::BGP,
             obj_palette: Palette::OBJ,
+            enabled: true,
         }
     }
 
