@@ -5,3 +5,4 @@ edition = "2024"
 
 [dependencies]
 sdl2 = "0.36"
+bit = "0.1.1"
